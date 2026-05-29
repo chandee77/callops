@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IT Roster - Admin Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-200 font-sans p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8 flex justify-between items-center bg-slate-800 text-white p-6 rounded-lg shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold">Admin Control Panel</h1>
+                <p class="text-sm text-slate-300">Secure Management Area</p>
+            </div>
+            <a href="/logout" class="bg-red-500 px-4 py-2 rounded hover:bg-red-600 font-bold">Logout</a>
+        </header>
+        <section class="mb-8 bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <h2 class="text-xl font-bold text-slate-700 mb-4">👥 Registered Staff Directory</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-100 text-slate-600 text-sm uppercase">
+                        <tr>
+                            <th class="py-3 px-4 rounded-tl-lg">Officer ID</th>
+                            <th class="py-3 px-4">Name</th>
+                            <th class="py-3 px-4 text-center">Total Shifts Done</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <% users.forEach(user => { %>
+                            <tr class="hover:bg-slate-50 <%= !user.isActive ? 'opacity-50 bg-gray-50' : '' %>">
+                                <td class="py-3 px-4 font-mono font-medium text-slate-800">
+                                    <%= user.id %>
+                                    <% if (!user.isActive) { %>
+                                        <span class="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">INACTIVE</span>
+                                    <% } %>
+                                </td>
+                                <td class="py-3 px-4 font-semibold"><%= user.name %></td>
+                                <td class="py-3 px-4 text-center">
+                                    <span class="bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-full text-sm">
+                                        <%= user.totalShifts %>
+                                    </span>
+                                </td>
+                            </tr>
+                        <% }) %>
+                        
+                        <% if (users.length === 0) { %>
+                            <tr><td colspan="4" class="py-6 text-center text-slate-500">No staff registered yet. Add one below.</td></tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-6">
+                
+                <div class="bg-white p-6 rounded-lg shadow border-l-4 border-yellow-400">
+                    <h2 class="text-xl font-semibold mb-4">Report Leave or Lock User</h2>
+                    <form action="/api/unavailability" method="POST" class="flex flex-col gap-4">
+                        <select name="userId" class="border p-2 rounded" required>
+                            <option value="">-- Select Officer --</option>
+                            <% users.forEach(user => { %>
+                                <option value="<%= user.id %>"><%= user.name %> (<%= user.id %>)</option>
+                            <% }) %>
+                        </select>
+                        <input type="date" name="date" class="border p-2 rounded" required>
+                        <select name="reason" class="border p-2 rounded" required>
+                            <option value="LEAVE">Standard Leave</option>
+                            <option value="ADMIN_LOCK">Admin Lock (Training/Discipline)</option>
+                        </select>
+                        <button type="submit" class="bg-yellow-500 text-white py-2 rounded font-bold">Apply & Auto-Reassign</button>
+                    </form>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow border-l-4 border-green-400">
+                    <h2 class="text-xl font-semibold mb-4">Generate Daily Schedule</h2>
+                    <form action="/api/generate-roster" method="POST" class="flex flex-col gap-4">
+                        <input type="date" name="date" class="border p-2 rounded" required>
+                        <button type="submit" class="bg-green-500 text-white py-2 rounded font-bold">Generate Day's Shifts</button>
+                    </form>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border-l-4 border-purple-500">
+                    <h2 class="text-xl font-semibold mb-2">Generate Entire Month</h2>
+                    <p class="text-xs text-gray-500 mb-4">
+                        Safely fills in missing shifts for a whole month. 
+                        <strong>Will not overwrite</strong> existing shifts, weekends, or holidays. Sends an email summary upon completion.
+                    </p>
+                    <form action="/api/generate-month" method="POST" class="flex flex-col gap-4">
+                        <input type="month" name="monthYear" class="border p-2 rounded" required>
+                        <button type="submit" class="bg-purple-600 text-white py-2 rounded font-bold hover:bg-purple-700">
+                            Run Bulk Algorithm
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow border-l-4 border-red-400">
+                    <h2 class="text-xl font-semibold mb-4">Declare Public Holiday</h2>
+                    <form action="/api/holidays" method="POST" class="flex flex-col gap-4">
+                        <input type="text" name="name" placeholder="Holiday Name (e.g. Poya)" class="border p-2 rounded" required>
+                        <input type="date" name="date" class="border p-2 rounded" required>
+                        <button type="submit" class="bg-red-500 text-white py-2 rounded font-bold">Register Holiday</button>
+                    </form>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow border-l-4 border-blue-400">
+                    <h2 class="text-xl font-semibold mb-4">Onboard New Officer</h2>
+                    <form action="/api/users" method="POST" class="flex flex-col gap-4">
+                        <input type="text" name="id" placeholder="ID (e.g. IT04)" class="border p-2 rounded" required>
+                        <input type="text" name="name" placeholder="Full Name" class="border p-2 rounded" required>
+                        <button type="submit" class="bg-blue-500 text-white py-2 rounded font-bold">Add to System</button>
+                    </form>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border-l-4 border-gray-600">
+                    <h2 class="text-xl font-semibold mb-4">Transfer / Deactivate Officer</h2>
+                    <p class="text-xs text-gray-500 mb-4">Removes them from rotation and deletes their future scheduled shifts. Past data is kept for records.</p>
+                    <form action="/api/users/remove" method="POST" class="flex flex-col gap-4">
+                        <select name="userId" class="border p-2 rounded" required>
+                            <option value="">-- Select Officer to Remove --</option>
+                            <% users.filter(u => u.isActive).forEach(user => { %>
+                                <option value="<%= user.id %>"><%= user.name %> (<%= user.id %>)</option>
+                            <% }) %>
+                        </select>
+                        <button type="submit" class="bg-gray-800 text-white py-2 rounded font-bold hover:bg-gray-900" onclick="return confirm('Are you sure you want to deactivate this officer?');">
+                            Deactivate Officer
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <section class="mt-12 mb-8 bg-red-50 p-6 rounded-lg border border-red-200">
+        <h2 class="text-2xl font-bold text-red-700 mb-6 flex items-center gap-2">⚠️ System Maintenance (Danger Zone)</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-orange-500">
+                <h3 class="text-lg font-bold mb-2">Recalculate: Clear Future Roster</h3>
+                <p class="text-sm text-gray-600 mb-4">If the schedule is messed up, pick a date. All shifts from that date onward will be deleted, and shift counts will be refunded. You can then re-run the month generator.</p>
+                <form action="/api/clear-future" method="POST" class="flex flex-col gap-4">
+                    <input type="date" name="fromDate" class="border p-2 rounded" required>
+                    <button type="submit" class="bg-orange-500 text-white py-2 rounded font-bold hover:bg-orange-600" onclick="return confirm('Are you sure you want to delete upcoming shifts?');">
+                        Clear Schedule from Date
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow border-l-4 border-red-700">
+                <h3 class="text-lg font-bold mb-2 text-red-700">Hard Reset System</h3>
+                <p class="text-sm text-gray-600 mb-4"><strong>WARNING:</strong> This deletes ALL past and future shifts, clears all leave data, and sets everyone's shift count back to 0. Staff accounts are kept.</p>
+                <form action="/api/reset-system" method="POST">
+                    <button type="submit" class="w-full bg-red-600 text-white py-3 rounded font-black hover:bg-red-800 transition-colors" onclick="return confirm('CRITICAL WARNING: This will permanently wipe all shift data and reset all scores to zero. Proceed?');">
+                        WIPE SYSTEM & RESET TO ZERO
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </section>
+</body>
+</html>

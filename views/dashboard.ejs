@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IT Roster Calendar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Smooth transition for filtering */
+        .calendar-day { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .user-card { transition: all 0.2s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans p-8">
+    <div class="max-w-6xl mx-auto">
+        
+        <header class="mb-10 text-center relative flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <a href="/?month=<%= prevMonth %>" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded font-bold text-slate-600">← Previous</a>
+            <div>
+                <h1 class="text-3xl font-black text-slate-800 uppercase tracking-wider"><%= monthName %> ROSTER</h1>
+                <p class="text-sm text-slate-500 mt-1">Click a User Card to see their specific days</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="/?month=<%= nextMonth %>" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded font-bold text-slate-600">Next →</a>
+                <a href="/logout" class="px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded font-bold text-sm ml-4">Logout</a>
+            </div>
+        </header>
+
+        <section class="mb-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <% users.filter(user => user.isActive).forEach(user => { %>
+                    <div id="card-<%= user.id %>" onclick="filterUser('<%= user.id %>')" 
+                         class="user-card cursor-pointer p-4 rounded-xl shadow-sm border bg-white border-slate-200 text-center hover:shadow-md hover:-translate-y-1">
+                        <div class="text-sm text-slate-500 font-medium"><%= user.id %></div>
+                        <div class="text-lg font-bold text-slate-800"><%= user.name %></div>
+                        <div class="mt-2 text-2xl font-black text-blue-600"><%= user.totalShifts %></div>
+                    </div>
+                <% }) %>
+            </div>
+        </section>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            
+            <div class="grid grid-cols-7 bg-slate-800 text-white text-center font-bold text-sm">
+                <div class="py-3 bg-slate-900 text-slate-300">SUN</div>
+                <div class="py-3">MON</div>
+                <div class="py-3">TUE</div>
+                <div class="py-3">WED</div>
+                <div class="py-3">THU</div>
+                <div class="py-3">FRI</div>
+                <div class="py-3 bg-slate-900 text-slate-300">SAT</div>
+            </div>
+
+            <div class="grid grid-cols-7 border-t border-slate-200">
+                
+                <% for (let i = 0; i < firstDayOfWeek; i++) { %>
+                    <div class="min-h-[120px] bg-slate-50 border-r border-b border-slate-100"></div>
+                <% } %>
+
+                <% for (let day = 1; day <= daysInMonth; day++) { 
+                    const currentDayOfWeek = (day + firstDayOfWeek - 1) % 7;
+                    const isWeekend = currentDayOfWeek === 0 || currentDayOfWeek === 6;
+                    const dateStr = `${year}-${monthStr}-${String(day).padStart(2, '0')}`;
+                    const isHoliday = holidayMap[dateStr];
+                    const shifts = scheduleMap[dateStr] || { MORNING: null, AFTERNOON: null };
+                    
+                    let bgClass = "bg-white";
+                    if (isHoliday) bgClass = "bg-red-50";
+                    else if (isWeekend) bgClass = "bg-slate-100";
+                %>
+                    
+                    <div class="calendar-day min-h-[120px] p-2 border-r border-b border-slate-200 relative <%= bgClass %>"
+                         data-morning="<%= shifts.MORNING %>" 
+                         data-afternoon="<%= shifts.AFTERNOON %>">
+                        
+                        <span class="absolute top-2 right-2 text-sm font-bold <%= isWeekend ? 'text-slate-400' : 'text-slate-700' %>">
+                            <%= day %>
+                        </span>
+
+                        <% if (isHoliday) { %>
+                            <div class="mt-6 text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
+                                🛑 <%= isHoliday %>
+                            </div>
+                        <% } else if (!isWeekend) { %>
+                            
+                            <div class="mt-6 space-y-2">
+                                <div class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold flex justify-between">
+                                    <span>Morn:</span> 
+                                    <span><%= shifts.MORNING || '---' %></span>
+                                </div>
+                                <div class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded font-bold flex justify-between">
+                                    <span>Aft:</span> 
+                                    <span><%= shifts.AFTERNOON || '---' %></span>
+                                </div>
+                            </div>
+
+                        <% } %>
+                    </div>
+
+                <% } %>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let activeUser = null;
+
+        function filterUser(userId) {
+            // 1. Reset all calendar days to full visibility
+            const allDays = document.querySelectorAll('.calendar-day');
+            allDays.forEach(day => day.classList.remove('opacity-20', 'scale-95'));
+
+            // 2. Reset all User Cards visually
+            const allCards = document.querySelectorAll('.user-card');
+            allCards.forEach(card => card.classList.remove('ring-4', 'ring-blue-500', 'bg-blue-50'));
+
+            // 3. If clicking the same user again, it turns OFF the filter (toggle)
+            if (activeUser === userId) {
+                activeUser = null;
+                return; 
+            }
+
+            // 4. Turn ON the filter
+            activeUser = userId;
+            
+            // Highlight the clicked card
+            document.getElementById('card-' + userId).classList.add('ring-4', 'ring-blue-500', 'bg-blue-50');
+
+            // Dim the days where the user is NOT working
+            allDays.forEach(day => {
+                const morningUser = day.getAttribute('data-morning');
+                const afternoonUser = day.getAttribute('data-afternoon');
+                
+                // If they don't work either shift today, fade this day out
+                if (morningUser !== userId && afternoonUser !== userId) {
+                    day.classList.add('opacity-20', 'scale-95');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
